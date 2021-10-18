@@ -83,15 +83,15 @@ export function Particles({ count = 1000 }) {
     geometry.current.setAttribute('position', position)
 
     // uv
-    const uvArray = new Float32Array(WIDTH * WIDTH * 2)
-    let p = 0
+    const uvArray = []
     for (let j = 0; j < WIDTH; j++) {
       for (let i = 0; i < WIDTH; i++) {
-        uvArray[p++] = i / (WIDTH - 1)
-        uvArray[p++] = j / (WIDTH - 1)
+        const u = i / (WIDTH - 1)
+        const v = j / (WIDTH - 1)
+        uvArray.push(u, v)
       }
     }
-    const uv = new THREE.BufferAttribute(uvArray, 2)
+    const uv = new THREE.BufferAttribute(new Float32Array(uvArray), 2)
     geometry.current.setAttribute('uv', uv)
   }, [count])
 
