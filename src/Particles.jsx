@@ -1,23 +1,39 @@
-import { useLayoutEffect, useMemo, useRef } from 'react'
-import { useThree } from '@react-three/fiber'
+import React, { useLayoutEffect, useMemo, useRef } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import { GPUComputationRenderer } from 'three-stdlib'
 
 import * as THREE from 'three'
 
+const WIDTH = 64
+
 const computePosition = /* glsl */ `
+  #define delta ( 1.0 / 60.0 )
+
   void main() {
     vec2 uv = gl_FragCoord.xy / resolution.xy;
-    vec4 prevPosition = texture2D( texturePosition, uv );
+    vec3 prevPosition = texture2D( texturePosition, uv ).xyz;
 
-    gl_FragColor = prevPosition;
+    vec3 dir = normalize(prevPosition);
+    vec3 newPosition = prevPosition + dir * delta;
+
+    gl_FragColor = vec4(newPosition, 1.0);
   }
 `
 
 const ParticleShader = {
+  uniforms: {
+    texturePosition: { value: null },
+  },
   vertexShader: /* glsl */ `
     #define SCALE 0.05
+
+    uniform sampler2D texturePosition;
+
     void main() {
-      vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+      vec4 posTemp = texture2D( texturePosition, uv );
+      vec3 pos = posTemp.xyz;
+
+      vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
       gl_PointSize = SCALE * ( 300.0 / - mvPosition.z );
       gl_Position = projectionMatrix * mvPosition;
     }
@@ -33,8 +49,8 @@ const ParticleShader = {
 
 export function Particles({ count = 1000 }) {
   const { gl } = useThree()
-  const { gpuCompute } = useMemo(() => {
-    const gpuCompute = new GPUComputationRenderer(64, 64, gl)
+  const { gpuCompute, positionVariable } = useMemo(() => {
+    const gpuCompute = new GPUComputationRenderer(WIDTH, WIDTH, gl)
     const dtPosition = gpuCompute.createTexture()
 
     // Fill textures
@@ -56,23 +72,40 @@ export function Particles({ count = 1000 }) {
       console.error(error)
     }
 
-    return { gpuCompute, positionArray }
-  })
+    return { gpuCompute, positionVariable }
+  }, [gl])
 
-  // Initialize point positions
+  // Initialize point attributes
   const geometry = useRef()
   useLayoutEffect(() => {
-    const positionArray = Array(count * 3)
-      .fill()
-      .map(() => THREE.MathUtils.randFloatSpread(2))
-    const position = new THREE.BufferAttribute(new Float32Array(positionArray), 3)
+    // position
+    const position = new THREE.BufferAttribute(new Float32Array(WIDTH * WIDTH * 3), 3)
     geometry.current.setAttribute('position', position)
+
+    // uv
+    const uvArray = new Float32Array(WIDTH * WIDTH * 2)
+    let p = 0
+    for (let j = 0; j < WIDTH; j++) {
+      for (let i = 0; i < WIDTH; i++) {
+        uvArray[p++] = i / (WIDTH - 1)
+        uvArray[p++] = j / (WIDTH - 1)
+      }
+    }
+    const uv = new THREE.BufferAttribute(uvArray, 2)
+    geometry.current.setAttribute('uv', uv)
   }, [count])
+
+  /** @type {React.RefObject<THREE.ShaderMaterial>} */
+  const material = useRef()
+  useFrame(() => {
+    gpuCompute.compute()
+    material.current.uniforms['texturePosition'].value = gpuCompute.getCurrentRenderTarget(positionVariable).texture
+  })
 
   return (
     <points>
       <bufferGeometry ref={geometry} />
-      <shaderMaterial args={[ParticleShader]} />
+      <shaderMaterial ref={material} args={[ParticleShader]} />
     </points>
   )
 }
