@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { GPUComputationRenderer } from 'three-stdlib'
+import { GPUComputationRenderer } from 'three/examples/jsm/misc/GPUComputationRenderer'
 
 import * as THREE from 'three'
 import { remap } from './lib.glsl'
@@ -40,7 +40,13 @@ const ParticleShader = {
   `,
 }
 
-export function Particles({ count = 1000 }) {
+/**
+ * @typedef ParticlesProps
+ * @property {THREE.Texture} map
+ *
+ * @param {ParticlesProps}
+ */
+export function Particles({ map = null }) {
   const { gl } = useThree()
   const { gpuCompute, positionVariable } = useMemo(() => {
     const gpuCompute = new GPUComputationRenderer(WIDTH, WIDTH, gl)
@@ -87,7 +93,7 @@ export function Particles({ count = 1000 }) {
     }
     const uv = new THREE.BufferAttribute(new Float32Array(uvArray), 2)
     geometry.current.setAttribute('uv', uv)
-  }, [count])
+  }, [])
 
   /** @type {React.RefObject<THREE.ShaderMaterial>} */
   const material = useRef()
