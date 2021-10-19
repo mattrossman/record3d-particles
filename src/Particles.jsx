@@ -4,13 +4,14 @@ import { GPUComputationRenderer } from 'three/examples/jsm/misc/GPUComputationRe
 
 import * as THREE from 'three'
 import { remap } from './lib.glsl'
-import { computePosition } from './computeShaders.glsl'
+import { computePosition, computeVelocity } from './computeShaders.glsl'
 
-const WIDTH = 248
+const WIDTH = 64
 
 const ParticleShader = {
   uniforms: {
     texturePosition: { value: null },
+    textureVelocity: { value: null },
   },
   vertexShader: /* glsl */ `
     #define SCALE 0.07
@@ -19,12 +20,10 @@ const ParticleShader = {
 
     void main() {
       vec4 posTexel = texture2D( texturePosition, uv );
-      vec3 dir = normalize(posTexel.xyz);
-      float lifetime = posTexel.w;
-      vec3 pos = dir * lifetime;
+      vec3 pos = posTexel.xyz;
 
       vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
-      gl_PointSize = SCALE * ( 300.0 / - mvPosition.z ) * (1. - lifetime);
+      gl_PointSize = SCALE * ( 300.0 / - mvPosition.z );
       gl_Position = projectionMatrix * mvPosition;
     }
   `,
@@ -48,9 +47,10 @@ const ParticleShader = {
  */
 export function Particles({ map = null }) {
   const { gl } = useThree()
-  const { gpuCompute, positionVariable } = useMemo(() => {
+  const { gpuCompute, positionVariable, velocityVariable } = useMemo(() => {
     const gpuCompute = new GPUComputationRenderer(WIDTH, WIDTH, gl)
     const dtPosition = gpuCompute.createTexture()
+    const dtVelocity = gpuCompute.createTexture()
 
     // Fill textures
     const positionArray = dtPosition.image.data
@@ -63,8 +63,11 @@ export function Particles({ map = null }) {
 
     // Configure GPGPU
     const positionVariable = gpuCompute.addVariable('texturePosition', computePosition, dtPosition)
-    gpuCompute.setVariableDependencies(positionVariable, [positionVariable])
+    const velocityVariable = gpuCompute.addVariable('textureVelocity', computeVelocity, dtVelocity)
+    gpuCompute.setVariableDependencies(positionVariable, [positionVariable, velocityVariable])
+    gpuCompute.setVariableDependencies(velocityVariable, [positionVariable, velocityVariable])
     positionVariable.material.uniforms.delta = { value: 0 }
+    velocityVariable.material.uniforms.delta = { value: 0 }
 
     const error = gpuCompute.init()
 
@@ -72,7 +75,7 @@ export function Particles({ map = null }) {
       console.error(error)
     }
 
-    return { gpuCompute, positionVariable }
+    return { gpuCompute, positionVariable, velocityVariable }
   }, [gl])
 
   // Initialize point attributes
@@ -98,9 +101,10 @@ export function Particles({ map = null }) {
   /** @type {React.RefObject<THREE.ShaderMaterial>} */
   const material = useRef()
   useFrame((_, delta) => {
-    positionVariable.material.uniforms.delta.value = delta
+    positionVariable.material.uniforms.delta.value = velocityVariable.material.uniforms.delta.value = delta
     gpuCompute.compute()
     material.current.uniforms['texturePosition'].value = gpuCompute.getCurrentRenderTarget(positionVariable).texture
+    material.current.uniforms['textureVelocity'].value = gpuCompute.getCurrentRenderTarget(velocityVariable).texture
   })
 
   return (
