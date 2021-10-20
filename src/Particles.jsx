@@ -5,25 +5,28 @@ import { GPUComputationRenderer } from 'three/examples/jsm/misc/GPUComputationRe
 import * as THREE from 'three'
 import { remap } from './lib.glsl'
 import { computePosition, computeVelocity } from './computeShaders.glsl'
+import { useControls } from 'leva'
 
-const WIDTH = 64
+const WIDTH = 256
 
 const ParticleShader = {
   uniforms: {
     texturePosition: { value: null },
     textureVelocity: { value: null },
+    particleSize: { value: 0.1 },
   },
   vertexShader: /* glsl */ `
     #define SCALE 0.07
 
     uniform sampler2D texturePosition;
+    uniform float particleSize;
 
     void main() {
       vec4 posTexel = texture2D( texturePosition, uv );
       vec3 pos = posTexel.xyz;
 
       vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
-      gl_PointSize = SCALE * ( 300.0 / - mvPosition.z );
+      gl_PointSize = particleSize * ( 300.0 / - mvPosition.z );
       gl_Position = projectionMatrix * mvPosition;
     }
   `,
@@ -107,10 +110,17 @@ export function Particles({ map = null }) {
     material.current.uniforms['textureVelocity'].value = gpuCompute.getCurrentRenderTarget(velocityVariable).texture
   })
 
+  const { size } = useControls({ size: { value: 0.1, min: 0.01, max: 0.2 } })
   return (
     <points>
       <bufferGeometry ref={geometry} />
-      <shaderMaterial ref={material} args={[ParticleShader]} />
+      <shaderMaterial
+        ref={material}
+        args={[ParticleShader]}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        uniforms-particleSize-value={size}
+      />
     </points>
   )
 }

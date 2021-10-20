@@ -1,8 +1,9 @@
-import { useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { OrbitControls, TorusKnot, useTexture } from '@react-three/drei'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Particles } from './Particles'
 import { Suspense } from 'react'
+import * as THREE from 'three'
 
 export default function App() {
   return (
@@ -22,8 +23,17 @@ function Scene() {
     <group>
       <OrbitControls />
       <Particles map={texture} />
+      <Background />
     </group>
   )
+}
+
+function Background({ color = 'black' }) {
+  const { set } = useThree()
+  useLayoutEffect(() => {
+    set(({ scene }) => void (scene.background = new THREE.Color(color)))
+  }, [color])
+  return null
 }
 
 function Obama() {

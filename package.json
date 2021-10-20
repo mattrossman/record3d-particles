@@ -10,6 +10,7 @@
     "@react-three/drei": "^7.12.6",
     "@react-three/fiber": "^7.0.9",
     "@types/three": "^0.133.1",
+    "leva": "^0.9.14",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-merge-refs": "^1.1.0",

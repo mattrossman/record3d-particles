@@ -38,6 +38,7 @@ export const computeVelocity = /* glsl */ `
     ) - (pos);
 
     vec3 newVelocity = vel + accel * delta;
+    newVelocity *= (1.0 - delta * 0.5); // drag
 
     gl_FragColor = vec4(newVelocity, 1.0);
   }
