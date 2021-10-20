@@ -4,7 +4,7 @@ import { GPUComputationRenderer } from 'three/examples/jsm/misc/GPUComputationRe
 
 import * as THREE from 'three'
 import { remap } from './lib.glsl'
-import { computeColor, computePosition, computeVelocity } from './computeShaders.glsl'
+import { computeColor, computeLifecycle, computePosition, computeVelocity } from './computeShaders.glsl'
 import { useControls } from 'leva'
 
 const WIDTH = 256
@@ -15,6 +15,7 @@ const ParticleShader = {
     texturePosition: { value: null },
     textureVelocity: { value: null },
     textureColor: { value: null },
+    textureLifecycle: { value: null },
     particleSize: { value: 0.1 },
   },
   vertexShader: /* glsl */ `
@@ -22,50 +23,61 @@ const ParticleShader = {
 
     uniform sampler2D texturePosition;
     uniform sampler2D textureVelocity;
+    uniform sampler2D textureLifecycle;
     uniform float particleSize;
 
     varying vec2 vUv;
 
     void main() {
-      vUv = uv;
-
+      // Read buffers
       vec4 texelPosition = texture2D( texturePosition, uv );
       vec4 texelVelocity = texture2D( textureVelocity, uv );
-      vec3 pos = texelPosition.xyz;
-      float age = texelPosition.w;
-      float respawn = texelVelocity.w;
+      vec4 texelLifecycle = texture2D( textureLifecycle, uv );
 
-      float decay = (2.0 - age) / 2.0;
+      // Parse buffers
+      vec3 pos = texelPosition.xyz;
+      float age = texelLifecycle.x;
+      float maxAge = texelLifecycle.y;
+      bool respawn = bool(texelLifecycle.z);
+
+      float decay = (maxAge - age) / maxAge;
 
       vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
       gl_PointSize = particleSize * decay * ( 300.0 / - mvPosition.z );
       gl_Position = projectionMatrix * mvPosition;
 
       // Clip particles that are respawning
-      if (respawn == 1.0) {
+      if (respawn) {
         gl_Position.x = gl_Position.z * 2.;
       }
+      
+      // Prepare varyings for fragment shader
+      vUv = uv;
     }
   `,
   fragmentShader: /* glsl */ `
     uniform sampler2D textureColor;
-    uniform sampler2D texturePosition;
+    uniform sampler2D textureLifecycle;
 
     varying vec2 vUv;
 
     ${remap}
 
     void main() {
+      // Read buffers
       vec4 texelColor = texture2D(textureColor, vUv);
-      vec4 texelPosition = texture2D(texturePosition, vUv);
-      float age = texelPosition.w;
+      vec4 texelLifecycle = texture2D( textureLifecycle, vUv );
+
+      // Parse buffers
+      vec3 initialColor = texelColor.xyz;
+      float age = texelLifecycle.x;
       
       vec2 coord = gl_PointCoord - vec2( 0.5 );
       float len = length( coord );
       if ( len > 0.5 ) discard;
       float brightness = remap(len, 0.0, 0.5, 1.0, 0.0);
       float fadeIn = smoothstep(0., 0.2, age);
-      gl_FragColor = vec4(texelColor.rgb * brightness * fadeIn, 1.0);
+      gl_FragColor = vec4(initialColor * brightness * fadeIn, 1.0);
     }
   `,
 }
@@ -78,33 +90,40 @@ const ParticleShader = {
  */
 export function Particles({ map = null }) {
   const { gl } = useThree()
-  const { gpuCompute, variablePosition, variableVelocity, variableColor } = useMemo(() => {
+  const { gpuCompute, uniforms, variablePosition, variableVelocity, variableColor, variableLifecycle } = useMemo(() => {
     const gpuCompute = new GPUComputationRenderer(WIDTH, WIDTH, gl)
     const dtPosition = gpuCompute.createTexture()
     const dtVelocity = gpuCompute.createTexture()
     const dtColor = gpuCompute.createTexture()
+    const dtLifecycle = gpuCompute.createTexture()
 
-    // Fill textures
-    const positionArray = dtPosition.image.data
-    for (let i = 0; i < positionArray.length; i += 4) {
-      positionArray[i + 0] = THREE.MathUtils.randFloatSpread(2)
-      positionArray[i + 1] = THREE.MathUtils.randFloatSpread(2)
-      positionArray[i + 2] = THREE.MathUtils.randFloatSpread(2)
-      positionArray[i + 3] = Math.random() * 2 // Lifetime
+    // Flag all particles for respawn
+    const arrayLifecycle = dtLifecycle.image.data
+    for (let i = 0; i < arrayLifecycle.length; i += 4) {
+      arrayLifecycle[i + 0] = 0 // age
+      arrayLifecycle[i + 1] = 0 // maxAge
+      arrayLifecycle[i + 2] = 1 // respawn
+      arrayLifecycle[i + 3] = 0 // (ignored)
     }
 
     // Configure GPGPU
     const variablePosition = gpuCompute.addVariable('texturePosition', computePosition, dtPosition)
     const variableVelocity = gpuCompute.addVariable('textureVelocity', computeVelocity, dtVelocity)
     const variableColor = gpuCompute.addVariable('textureColor', computeColor, dtColor)
-    gpuCompute.setVariableDependencies(variablePosition, [variablePosition, variableVelocity])
-    gpuCompute.setVariableDependencies(variableVelocity, [variablePosition, variableVelocity])
-    gpuCompute.setVariableDependencies(variableColor, [variablePosition, variableColor])
-    variablePosition.material.uniforms = {
+    const variableLifecycle = gpuCompute.addVariable('textureLifecycle', computeLifecycle, dtLifecycle)
+    gpuCompute.setVariableDependencies(variablePosition, [variableLifecycle, variablePosition, variableVelocity])
+    gpuCompute.setVariableDependencies(variableVelocity, [variableLifecycle, variablePosition, variableVelocity])
+    gpuCompute.setVariableDependencies(variableColor, [variableLifecycle, variablePosition, variableColor])
+    gpuCompute.setVariableDependencies(variableLifecycle, [variableLifecycle])
+
+    // Shared uniforms
+    const uniforms = {
       delta: { value: 0 },
       time: { value: 0 },
     }
-    variableVelocity.material.uniforms.delta = { value: 0 }
+    Object.assign(variablePosition.material.uniforms, uniforms)
+    Object.assign(variableVelocity.material.uniforms, uniforms)
+    Object.assign(variableLifecycle.material.uniforms, uniforms)
     variableColor.material.uniforms.map = { value: map }
 
     const error = gpuCompute.init()
@@ -113,7 +132,7 @@ export function Particles({ map = null }) {
       console.error(error)
     }
 
-    return { gpuCompute, variablePosition, variableVelocity, variableColor }
+    return { gpuCompute, uniforms, variablePosition, variableVelocity, variableColor, variableLifecycle }
   }, [gl])
 
   // Initialize point attributes
@@ -134,24 +153,19 @@ export function Particles({ map = null }) {
     }
     const uv = new THREE.BufferAttribute(new Float32Array(uvArray), 2)
     geometry.current.setAttribute('uv', uv)
-
-    // lifetime
-    const lifetimeArray = Array(COUNT)
-      .fill()
-      .map(() => THREE.MathUtils.randFloat(1, 2))
-    const lifetime = new THREE.BufferAttribute(new Float32Array(lifetimeArray), 1)
-    geometry.current.setAttribute('lifetime', lifetime)
   }, [])
 
   /** @type {React.RefObject<THREE.ShaderMaterial>} */
   const material = useRef()
   useFrame(({ clock }, delta) => {
-    variablePosition.material.uniforms.delta.value = variableVelocity.material.uniforms.delta.value = delta
-    variablePosition.material.uniforms.time.value = clock.elapsedTime
+    uniforms.delta.value = delta
+    uniforms.time.value = clock.elapsedTime
+
     gpuCompute.compute()
     material.current.uniforms['texturePosition'].value = gpuCompute.getCurrentRenderTarget(variablePosition).texture
     material.current.uniforms['textureVelocity'].value = gpuCompute.getCurrentRenderTarget(variableVelocity).texture
     material.current.uniforms['textureColor'].value = gpuCompute.getCurrentRenderTarget(variableColor).texture
+    material.current.uniforms['textureLifecycle'].value = gpuCompute.getCurrentRenderTarget(variableLifecycle).texture
   })
 
   const { size } = useControls({ size: { value: 0.05, min: 0.001, max: 0.2 } })
