@@ -78,7 +78,7 @@ const ParticleShader = {
  */
 export function Particles({ map = null }) {
   const { gl } = useThree()
-  const { gpuCompute, positionVariable, velocityVariable, colorVariable } = useMemo(() => {
+  const { gpuCompute, variablePosition, variableVelocity, variableColor } = useMemo(() => {
     const gpuCompute = new GPUComputationRenderer(WIDTH, WIDTH, gl)
     const dtPosition = gpuCompute.createTexture()
     const dtVelocity = gpuCompute.createTexture()
@@ -94,18 +94,18 @@ export function Particles({ map = null }) {
     }
 
     // Configure GPGPU
-    const positionVariable = gpuCompute.addVariable('texturePosition', computePosition, dtPosition)
-    const velocityVariable = gpuCompute.addVariable('textureVelocity', computeVelocity, dtVelocity)
-    const colorVariable = gpuCompute.addVariable('textureColor', computeColor, dtColor)
-    gpuCompute.setVariableDependencies(positionVariable, [positionVariable, velocityVariable])
-    gpuCompute.setVariableDependencies(velocityVariable, [positionVariable, velocityVariable])
-    gpuCompute.setVariableDependencies(colorVariable, [positionVariable, colorVariable])
-    positionVariable.material.uniforms = {
+    const variablePosition = gpuCompute.addVariable('texturePosition', computePosition, dtPosition)
+    const variableVelocity = gpuCompute.addVariable('textureVelocity', computeVelocity, dtVelocity)
+    const variableColor = gpuCompute.addVariable('textureColor', computeColor, dtColor)
+    gpuCompute.setVariableDependencies(variablePosition, [variablePosition, variableVelocity])
+    gpuCompute.setVariableDependencies(variableVelocity, [variablePosition, variableVelocity])
+    gpuCompute.setVariableDependencies(variableColor, [variablePosition, variableColor])
+    variablePosition.material.uniforms = {
       delta: { value: 0 },
       time: { value: 0 },
     }
-    velocityVariable.material.uniforms.delta = { value: 0 }
-    colorVariable.material.uniforms.map = { value: map }
+    variableVelocity.material.uniforms.delta = { value: 0 }
+    variableColor.material.uniforms.map = { value: map }
 
     const error = gpuCompute.init()
 
@@ -113,7 +113,7 @@ export function Particles({ map = null }) {
       console.error(error)
     }
 
-    return { gpuCompute, positionVariable, velocityVariable, colorVariable }
+    return { gpuCompute, variablePosition, variableVelocity, variableColor }
   }, [gl])
 
   // Initialize point attributes
@@ -146,17 +146,17 @@ export function Particles({ map = null }) {
   /** @type {React.RefObject<THREE.ShaderMaterial>} */
   const material = useRef()
   useFrame(({ clock }, delta) => {
-    positionVariable.material.uniforms.delta.value = velocityVariable.material.uniforms.delta.value = delta
-    positionVariable.material.uniforms.time.value = clock.elapsedTime
+    variablePosition.material.uniforms.delta.value = variableVelocity.material.uniforms.delta.value = delta
+    variablePosition.material.uniforms.time.value = clock.elapsedTime
     gpuCompute.compute()
-    material.current.uniforms['texturePosition'].value = gpuCompute.getCurrentRenderTarget(positionVariable).texture
-    material.current.uniforms['textureVelocity'].value = gpuCompute.getCurrentRenderTarget(velocityVariable).texture
-    material.current.uniforms['textureColor'].value = gpuCompute.getCurrentRenderTarget(colorVariable).texture
+    material.current.uniforms['texturePosition'].value = gpuCompute.getCurrentRenderTarget(variablePosition).texture
+    material.current.uniforms['textureVelocity'].value = gpuCompute.getCurrentRenderTarget(variableVelocity).texture
+    material.current.uniforms['textureColor'].value = gpuCompute.getCurrentRenderTarget(variableColor).texture
   })
 
-  const { size } = useControls({ size: { value: 0.1, min: 0.01, max: 0.2 } })
+  const { size } = useControls({ size: { value: 0.05, min: 0.001, max: 0.2 } })
   return (
-    <points>
+    <points frustumCulled={false}>
       <bufferGeometry ref={geometry} />
       <shaderMaterial
         ref={material}
