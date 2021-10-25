@@ -10,6 +10,30 @@ export const clampWrapped = /* glsl */ `
   }
 `
 
+export const rgb2hue = /* glsl */ `
+  // Modified "rgb2hsv()" from this source: https://stackoverflow.com/a/17897228
+  float rgb2hue(vec3 c)
+  {
+    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return abs(q.z + (q.w - q.y) / (6.0 * d + e));
+  }
+`
+
+export const getPixelDepth = /* glsl */ `
+  float getPixelDepth(ivec2 pixel)
+  {
+    vec2 lookupPt = ( vec2(pixel) + vec2(0.5) ) / vec2(texSize);
+    float hue = rgb2hue( texture2D(texImg, lookupPt).rgb );
+    float pixelDepth = 3.0 * hue;
+    return pixelDepth;
+  }
+`
+
 export const snoise = /* glsl */ `
 //
 // Description : Array and textureless GLSL 2D/3D/4D simplex

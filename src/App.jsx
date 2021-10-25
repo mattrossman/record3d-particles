@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import { OrbitControls, useTexture } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber'
 import { Particles } from './Particles'
@@ -16,13 +16,21 @@ export default function App() {
 }
 
 function Scene() {
-  const texture = useTexture(
-    'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Obama_portrait_crop.jpg/762px-Obama_portrait_crop.jpg'
-  )
+  const [videoTexture] = useState(() => {
+    const video = document.createElement('video')
+    video.autoplay = true
+    video.src = '/record3d_goat.mp4'
+    video.crossOrigin = 'anonymous'
+    video.loop = true
+    const videoTexture = new THREE.VideoTexture(video)
+    videoTexture.format = THREE.RGBAFormat
+    videoTexture.encoding = THREE.sRGBEncoding
+    return videoTexture
+  })
   return (
     <group>
       <OrbitControls />
-      <Particles map={texture} />
+      <Particles map={videoTexture} />
       <Background />
     </group>
   )
@@ -34,13 +42,4 @@ function Background({ color = 'black' }) {
     set(({ scene }) => void (scene.background = new THREE.Color(color)))
   }, [color])
   return null
-}
-
-function Obama() {
-  return (
-    <mesh>
-      <planeGeometry />
-      <meshBasicMaterial map={texture} />
-    </mesh>
-  )
 }
