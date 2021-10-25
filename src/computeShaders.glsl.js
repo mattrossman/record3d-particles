@@ -1,4 +1,4 @@
-import { clampWrapped, snoise } from './lib.glsl'
+import { clampWrapped, remap, snoise } from './lib.glsl'
 
 export const computePosition = /* glsl */ `
   uniform float delta;
@@ -18,11 +18,7 @@ export const computePosition = /* glsl */ `
 
     if (respawn ) {
       vec3 seed = vec3(gl_FragCoord.xy * 100.0, time);
-      vec3 spawnPosition = vec3(
-        snoise(seed + 100.),
-        snoise(seed + 200.),
-        0.
-      );
+      vec3 spawnPosition = vec3(uv * 2. - 1., 0. );
       gl_FragColor = vec4(spawnPosition, 1.0);
     }
     else {
@@ -52,11 +48,11 @@ export const computeVelocity = /* glsl */ `
     }
     else {
       vec3 accel = vec3(
-        snoise(10. * (pos + vec3(1000.0))),
-        snoise(10. * (pos + vec3(2000.0))),
-        snoise(10. * (pos + vec3(3000.0)))
+        snoise(5. * (pos + vec3(1000.0))),
+        snoise(5. * (pos + vec3(2000.0))),
+        snoise(5. * (pos + vec3(3000.0)))
       );
-      vec3 newVelocity = vel + accel * delta * 0.1;
+      vec3 newVelocity = vel + accel * delta * 0.5;
       // newVelocity *= (1.0 - delta * 0.1); // drag
 
       gl_FragColor = vec4(newVelocity, 1.0);
@@ -89,6 +85,8 @@ export const computeLifecycle = /* glsl */ `
   uniform float delta;
   uniform float time;
 
+  ${remap}
+
   float rand(vec2 co){
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
   }
@@ -103,7 +101,8 @@ export const computeLifecycle = /* glsl */ `
 
     if (respawn) {
       age = 0.0;
-      maxAge = rand(uv * 231.7 + time) * 3.0;
+      float randomVal = rand(uv * 231.7 + time);
+      maxAge = remap(randomVal, 0., 1., 0.5, 1.);
       respawn = false;
     }
     else if (age >= maxAge) {
