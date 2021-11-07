@@ -88,7 +88,7 @@ const ParticleShader = {
  *
  * @param {ParticlesProps}
  */
-export function Particles({ map = null }) {
+export function Particles({ map = null, intrMat = null }) {
   const { gl } = useThree()
   const { gpuCompute, uniforms, variablePosition, variableVelocity, variableColor, variableLifecycle } = useMemo(() => {
     const gpuCompute = new GPUComputationRenderer(WIDTH, WIDTH, gl)
