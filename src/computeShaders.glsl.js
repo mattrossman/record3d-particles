@@ -3,6 +3,8 @@ import { clampWrapped, remap, snoise } from './lib.glsl'
 export const computePosition = /* glsl */ `
   uniform float delta;
   uniform float time;
+  uniform vec2 videoResolution;
+  uniform mat3 intrinsicMatrix;
 
   ${clampWrapped}
   ${snoise}
@@ -17,12 +19,13 @@ export const computePosition = /* glsl */ `
     bool respawn = bool(texelLifecycle.z);
 
     if (respawn ) {
-      vec3 seed = vec3(gl_FragCoord.xy * 100.0, time);
       vec3 spawnPosition = vec3(uv * 2. - 1., 0. );
       gl_FragColor = vec4(spawnPosition, 1.0);
     }
     else {
-      vec3 nextPosition = texelPosition.xyz + texelVelocity.xyz * delta;
+      // [DEBUG]
+      // vec3 nextPosition = texelPosition.xyz + texelVelocity.xyz * delta;
+      vec3 nextPosition = texelPosition.xyz;
       gl_FragColor = vec4(nextPosition, 1.0);
     }
   }
@@ -75,7 +78,9 @@ export const computeColor = /* glsl */ `
 
     // If the particle just spawned at a new position, lookup the new color
     if (age == 0.0) {
+      // Particles spawn in the [-1, 1] range of positions
       vec2 uvImage = texelPosition.xy * 0.5 + 0.5;
+      uvImage.x = uvImage.x * 0.5 + 0.5;
       gl_FragColor = texture2D(map, uvImage);
     }
   }
@@ -102,7 +107,9 @@ export const computeLifecycle = /* glsl */ `
     if (respawn) {
       age = 0.0;
       float randomVal = rand(uv * 231.7 + time);
-      maxAge = remap(randomVal, 0., 1., 0.5, 1.);
+      // [DEBUG]
+      // maxAge = remap(randomVal, 0., 1., 0.5, 1.);
+      maxAge = remap(randomVal, 0., 1., 0.01, 0.02);
       respawn = false;
     }
     else if (age >= maxAge) {

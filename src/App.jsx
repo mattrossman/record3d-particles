@@ -45,7 +45,7 @@ function Scene() {
   return (
     <group>
       <OrbitControls />
-      <Particles map={videoTexture} intrMat={intrMat} />
+      <Particles map={videoTexture} videoResolution={[video.videoWidth, video.videoWidth]} intrMat={intrMat} />
       <Background />
     </group>
   )

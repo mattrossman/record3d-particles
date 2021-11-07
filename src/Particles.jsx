@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef } from 'react'
+import React, { useLayoutEffect, useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { GPUComputationRenderer } from 'three/examples/jsm/misc/GPUComputationRenderer'
 
@@ -43,7 +43,9 @@ const ParticleShader = {
       float decay = (maxAge - age) / maxAge;
 
       vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
-      gl_PointSize = particleSize * decay * ( 300.0 / - mvPosition.z );
+      // [DEBUG]
+      // gl_PointSize = particleSize * decay * ( 300.0 / - mvPosition.z );
+      gl_PointSize = particleSize * ( 300.0 / - mvPosition.z );
       gl_Position = projectionMatrix * mvPosition;
 
       // Clip particles that are respawning
@@ -77,7 +79,9 @@ const ParticleShader = {
       if ( len > 0.5 ) discard;
       float brightness = remap(len, 0.0, 0.5, 1.0, 0.0);
       float fadeIn = smoothstep(0., 0.2, age);
-      gl_FragColor = vec4(initialColor * brightness * fadeIn, 1.0);
+      // [DEBUG]
+      // gl_FragColor = vec4(initialColor * brightness * fadeIn, 1.0);
+      gl_FragColor = vec4(initialColor, 1.0);
     }
   `,
 }
@@ -88,7 +92,7 @@ const ParticleShader = {
  *
  * @param {ParticlesProps}
  */
-export function Particles({ map = null, intrMat = null }) {
+export function Particles({ map = null, videoResolution = [], intrMat = null }) {
   const { gl } = useThree()
   const { gpuCompute, uniforms, variablePosition, variableVelocity, variableColor, variableLifecycle } = useMemo(() => {
     const gpuCompute = new GPUComputationRenderer(WIDTH, WIDTH, gl)
@@ -120,6 +124,8 @@ export function Particles({ map = null, intrMat = null }) {
     const uniforms = {
       delta: { value: 0 },
       time: { value: 0 },
+      videoResolution: { value: new THREE.Vector2() },
+      intrinsicMatrix: { value: intrMat },
     }
     Object.assign(variablePosition.material.uniforms, uniforms)
     Object.assign(variableVelocity.material.uniforms, uniforms)
@@ -134,6 +140,11 @@ export function Particles({ map = null, intrMat = null }) {
 
     return { gpuCompute, uniforms, variablePosition, variableVelocity, variableColor, variableLifecycle }
   }, [gl])
+
+  useEffect(() => {
+    uniforms.intrinsicMatrix.value = intrMat
+    uniforms.videoResolution.value.fromArray(videoResolution)
+  }, [videoResolution, intrMat])
 
   // Initialize point attributes
   const geometry = useRef()
