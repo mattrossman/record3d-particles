@@ -80,8 +80,8 @@ const ParticleShader = {
       float brightness = remap(len, 0.0, 0.5, 1.0, 0.0);
       float fadeIn = smoothstep(0., 0.2, age);
       // [DEBUG]
-      // gl_FragColor = vec4(initialColor * brightness * fadeIn, 1.0);
-      gl_FragColor = vec4(initialColor, 1.0);
+      gl_FragColor = vec4(initialColor * brightness * fadeIn, 1.0);
+      // gl_FragColor = vec4(initialColor, 1.0);
     }
   `,
 }
@@ -124,13 +124,14 @@ export function Particles({ map = null, videoResolution = [], intrMat = null }) 
     const uniforms = {
       delta: { value: 0 },
       time: { value: 0 },
+      map: { value: map },
       videoResolution: { value: new THREE.Vector2() },
-      intrinsicMatrix: { value: intrMat },
+      iK: { value: new THREE.Vector4() },
     }
     Object.assign(variablePosition.material.uniforms, uniforms)
     Object.assign(variableVelocity.material.uniforms, uniforms)
     Object.assign(variableLifecycle.material.uniforms, uniforms)
-    variableColor.material.uniforms.map = { value: map }
+    Object.assign(variableColor.material.uniforms, uniforms)
 
     const error = gpuCompute.init()
 
@@ -142,7 +143,11 @@ export function Particles({ map = null, videoResolution = [], intrMat = null }) 
   }, [gl])
 
   useEffect(() => {
-    uniforms.intrinsicMatrix.value = intrMat
+    const ifx = 1.0 / intrMat.elements[0]
+    const ify = 1.0 / intrMat.elements[4]
+    const itx = -intrMat.elements[2] / intrMat.elements[0]
+    const ity = -intrMat.elements[5] / intrMat.elements[4]
+    uniforms.iK.value.set(ifx, ify, itx, ity)
     uniforms.videoResolution.value.fromArray(videoResolution)
   }, [videoResolution, intrMat])
 

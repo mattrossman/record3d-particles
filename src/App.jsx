@@ -1,11 +1,12 @@
-import { useLayoutEffect, useMemo, useState } from 'react'
-import { OrbitControls, useTexture } from '@react-three/drei'
+import { useLayoutEffect, useMemo, useEffect } from 'react'
+import { OrbitControls, Plane, useTexture } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber'
 import { Particles } from './Particles'
 import { Suspense } from 'react'
 import * as THREE from 'three'
 import { OfflineVideoSource } from './OfflineVideoSource'
 import { suspend } from 'suspend-react'
+import { MeshBasicMaterial } from 'three'
 
 export default function App() {
   const onDrop = (e) => {
@@ -16,7 +17,7 @@ export default function App() {
   const preventDefault = (e) => e.preventDefault()
   return (
     <>
-      <Canvas>
+      <Canvas linear flat camera={{ position: [0, 0, 1] }}>
         <Suspense fallback={null}>
           <Scene />
         </Suspense>
@@ -39,7 +40,6 @@ function Scene() {
   const videoTexture = useMemo(() => {
     const videoTexture = new THREE.VideoTexture(video)
     videoTexture.format = THREE.RGBAFormat
-    videoTexture.encoding = THREE.sRGBEncoding
     return videoTexture
   }, [video])
   return (
@@ -47,6 +47,10 @@ function Scene() {
       <OrbitControls />
       <Particles map={videoTexture} videoResolution={[video.videoWidth, video.videoWidth]} intrMat={intrMat} />
       <Background />
+      <axesHelper />
+      {/* <Plane>
+        <meshBasicMaterial map={videoTexture} />
+      </Plane> */}
     </group>
   )
 }

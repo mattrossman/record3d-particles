@@ -1,13 +1,15 @@
-import { clampWrapped, remap, snoise } from './lib.glsl'
+import { clampWrapped, getPixelDepth, remap, rgb2hue, snoise } from './lib.glsl'
 
 export const computePosition = /* glsl */ `
   uniform float delta;
   uniform float time;
+  uniform sampler2D map;
   uniform vec2 videoResolution;
-  uniform mat3 intrinsicMatrix;
+  uniform vec4 iK;
 
   ${clampWrapped}
   ${snoise}
+  ${rgb2hue}
 
   void main() {
     vec2 uv = gl_FragCoord.xy / resolution.xy;
@@ -19,13 +21,24 @@ export const computePosition = /* glsl */ `
     bool respawn = bool(texelLifecycle.z);
 
     if (respawn ) {
+      vec4 texelRgbd = texture2D(map, uv * vec2(0.5, 1.0));
+      float hue = rgb2hue( texelRgbd.rgb );
+      float pixelDepth = 3.0 * hue;
+      float scale = 1.0;
+      vec2 pt = uv * videoResolution;
+      vec3 ptPos = scale * vec3(
+        (iK.x * float(pt.x) + iK.z) * pixelDepth,
+        (iK.y * float(pt.y) + iK.w) * pixelDepth,
+        -pixelDepth
+      );
+      vec3 pixelPosition = vec3(uv * videoResolution, 0.);
       vec3 spawnPosition = vec3(uv * 2. - 1., 0. );
-      gl_FragColor = vec4(spawnPosition, 1.0);
+      gl_FragColor = vec4(ptPos, 1.0);
     }
     else {
       // [DEBUG]
-      // vec3 nextPosition = texelPosition.xyz + texelVelocity.xyz * delta;
-      vec3 nextPosition = texelPosition.xyz;
+      vec3 nextPosition = texelPosition.xyz + texelVelocity.xyz * delta;
+      // vec3 nextPosition = texelPosition.xyz;
       gl_FragColor = vec4(nextPosition, 1.0);
     }
   }
@@ -68,6 +81,7 @@ export const computeColor = /* glsl */ `
 
   void main() {
     vec2 uv = gl_FragCoord.xy / resolution.xy;
+    // TODO: remove texelPosition dependency 
     vec4 texelPosition = texture2D( texturePosition, uv );
     vec4 texelLifecycle = texture2D( textureLifecycle, uv );
     vec4 texelColor = texture2D( textureColor, uv );
@@ -79,7 +93,7 @@ export const computeColor = /* glsl */ `
     // If the particle just spawned at a new position, lookup the new color
     if (age == 0.0) {
       // Particles spawn in the [-1, 1] range of positions
-      vec2 uvImage = texelPosition.xy * 0.5 + 0.5;
+      vec2 uvImage = uv;
       uvImage.x = uvImage.x * 0.5 + 0.5;
       gl_FragColor = texture2D(map, uvImage);
     }
@@ -108,8 +122,8 @@ export const computeLifecycle = /* glsl */ `
       age = 0.0;
       float randomVal = rand(uv * 231.7 + time);
       // [DEBUG]
-      // maxAge = remap(randomVal, 0., 1., 0.5, 1.);
-      maxAge = remap(randomVal, 0., 1., 0.01, 0.02);
+      maxAge = remap(randomVal, 0., 1., 0.1, 0.4);
+      // maxAge = remap(randomVal, 0., 1., 0.01, 0.02);
       respawn = false;
     }
     else if (age >= maxAge) {

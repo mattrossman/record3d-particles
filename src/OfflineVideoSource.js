@@ -13,6 +13,16 @@ export class OfflineVideoSource {
     this.videoTag.setAttribute('playsinline', '')
     this.isVideoLoaded = false
     this.maxNumPoints = 720 * 960
+
+    // Autoplay on mobile / HMD needs the video to be in viewport
+    document.body.appendChild(this.videoTag)
+    Object.assign(this.videoTag.style, {
+      position: 'absolute',
+      zIndex: -1,
+      height: '0px',
+      width: '0px',
+    })
+
     this.lastVideoSize = { width: 0, height: 0 }
     this.onVideoChange = () => {}
 
