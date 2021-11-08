@@ -193,6 +193,7 @@ export function Particles({ map = null, videoResolution = [], intrMat = null }) 
         args={[ParticleShader]}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
+        depthTest={false}
         uniforms-particleSize-value={size}
       />
     </points>

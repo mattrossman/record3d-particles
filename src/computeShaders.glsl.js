@@ -25,7 +25,7 @@ export const computePosition = /* glsl */ `
       float hue = rgb2hue( texelRgbd.rgb );
       float pixelDepth = 3.0 * hue;
       float scale = 1.0;
-      vec2 pt = uv * videoResolution;
+      vec2 pt = uv * videoResolution * vec2(0.5, 1.0);
       vec3 ptPos = scale * vec3(
         (iK.x * float(pt.x) + iK.z) * pixelDepth,
         (iK.y * float(pt.y) + iK.w) * pixelDepth,

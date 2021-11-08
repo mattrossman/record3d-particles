@@ -53,6 +53,13 @@ export class OfflineVideoSource {
       dataURLReader.readAsDataURL(videoFile)
     })
 
+    /** @type {Promise<[number, number]>} */
+    const resolutionPromise = new Promise((resolve) => {
+      self.videoTag.onloadeddata = (e) => {
+        resolve([self.videoTag.videoWidth, self.videoTag.videoHeight])
+      }
+    })
+
     /** @type {Promise<THREE.Matrix3>} */
     const matrixPromise = new Promise((resolve) => {
       let binaryMetadataReader = new FileReader()
@@ -70,6 +77,7 @@ export class OfflineVideoSource {
 
     return {
       video: await videoPromise,
+      videoResolution: await resolutionPromise,
       intrMat: await matrixPromise,
     }
   }

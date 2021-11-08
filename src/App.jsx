@@ -30,12 +30,12 @@ export default function App() {
 }
 
 function Scene() {
-  const { video, intrMat } = suspend(async () => {
+  const { video, intrMat, videoResolution } = suspend(async () => {
     const response = await fetch('/record3d_goat.mp4')
     const blob = await response.blob()
     const videoSource = new OfflineVideoSource()
-    const { video, intrMat } = await videoSource.load(blob)
-    return { video, intrMat }
+    const { video, intrMat, videoResolution } = await videoSource.load(blob)
+    return { video, intrMat, videoResolution }
   }, [])
   const videoTexture = useMemo(() => {
     const videoTexture = new THREE.VideoTexture(video)
@@ -45,9 +45,9 @@ function Scene() {
   return (
     <group>
       <OrbitControls />
-      <Particles map={videoTexture} videoResolution={[video.videoWidth, video.videoWidth]} intrMat={intrMat} />
+      <Particles map={videoTexture} videoResolution={videoResolution} intrMat={intrMat} />
       <Background />
-      <axesHelper />
+      {/* <axesHelper /> */}
       {/* <Plane>
         <meshBasicMaterial map={videoTexture} />
       </Plane> */}
