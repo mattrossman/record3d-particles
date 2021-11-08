@@ -24,6 +24,7 @@ export const computePosition = /* glsl */ `
       vec4 texelRgbd = texture2D(map, uv * vec2(0.5, 1.0));
       float hue = rgb2hue( texelRgbd.rgb );
       float pixelDepth = 3.0 * hue;
+      bool shouldDiscard = pixelDepth < 0.1 || pixelDepth > 2.8;
       float scale = 1.0;
       vec2 pt = uv * videoResolution * vec2(0.5, 1.0);
       vec3 ptPos = scale * vec3(
@@ -33,13 +34,13 @@ export const computePosition = /* glsl */ `
       );
       vec3 pixelPosition = vec3(uv * videoResolution, 0.);
       vec3 spawnPosition = vec3(uv * 2. - 1., 0. );
-      gl_FragColor = vec4(ptPos, 1.0);
+      gl_FragColor = vec4(ptPos, float(shouldDiscard));
     }
     else {
-      // [DEBUG]
       vec3 nextPosition = texelPosition.xyz + texelVelocity.xyz * delta;
+      // [DEBUG]
       // vec3 nextPosition = texelPosition.xyz;
-      gl_FragColor = vec4(nextPosition, 1.0);
+      gl_FragColor = vec4(nextPosition, 0.0);
     }
   }
 `
@@ -113,12 +114,17 @@ export const computeLifecycle = /* glsl */ `
   void main() {
     vec2 uv = gl_FragCoord.xy / resolution.xy;
     vec4 texelLifecycle = texture2D( textureLifecycle, uv );
+    vec4 texelPosition = texture2D( texturePosition, uv );
 
     float age = texelLifecycle.x;
     float maxAge = texelLifecycle.y;
     bool respawn = bool(texelLifecycle.z);
+    bool shouldDiscard = bool(texelPosition.w);
 
-    if (respawn) {
+    if (shouldDiscard) {
+      respawn = true;
+    }
+    else if (respawn) {
       age = 0.0;
       float randomVal = rand(uv * 231.7 + time);
       // [DEBUG]

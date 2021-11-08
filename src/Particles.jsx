@@ -118,7 +118,7 @@ export function Particles({ map = null, videoResolution = [], intrMat = null }) 
     gpuCompute.setVariableDependencies(variablePosition, [variableLifecycle, variablePosition, variableVelocity])
     gpuCompute.setVariableDependencies(variableVelocity, [variableLifecycle, variablePosition, variableVelocity])
     gpuCompute.setVariableDependencies(variableColor, [variableLifecycle, variablePosition, variableColor])
-    gpuCompute.setVariableDependencies(variableLifecycle, [variableLifecycle])
+    gpuCompute.setVariableDependencies(variableLifecycle, [variableLifecycle, variablePosition])
 
     // Shared uniforms
     const uniforms = {
