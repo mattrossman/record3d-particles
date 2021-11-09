@@ -24,16 +24,6 @@ export const rgb2hue = /* glsl */ `
   }
 `
 
-export const getPixelDepth = /* glsl */ `
-  float getPixelDepth(ivec2 pixel)
-  {
-    vec2 lookupPt = ( vec2(pixel) + vec2(0.5) ) / vec2(texSize);
-    float hue = rgb2hue( texture2D(texImg, lookupPt).rgb );
-    float pixelDepth = 3.0 * hue;
-    return pixelDepth;
-  }
-`
-
 export const snoise = /* glsl */ `
 //
 // Description : Array and textureless GLSL 2D/3D/4D simplex

@@ -127,6 +127,9 @@ export function Particles({ map = null, videoResolution = [], intrMat = null }) 
       map: { value: map },
       videoResolution: { value: new THREE.Vector2() },
       iK: { value: new THREE.Vector4() },
+      range: { value: new THREE.Vector2() },
+      filterRadius: { value: 1 },
+      filterThreshold: { value: 1 },
     }
     Object.assign(variablePosition.material.uniforms, uniforms)
     Object.assign(variableVelocity.material.uniforms, uniforms)
@@ -184,7 +187,12 @@ export function Particles({ map = null, videoResolution = [], intrMat = null }) 
     material.current.uniforms['textureLifecycle'].value = gpuCompute.getCurrentRenderTarget(variableLifecycle).texture
   })
 
-  const { size } = useControls({ size: { value: 0.05, min: 0.001, max: 0.2 } })
+  const { particleSize } = useControls({
+    particleSize: { value: 0.02, min: 0.001, max: 0.04 },
+    range: { value: [0.3, 2.8], min: 0, max: 3, onChange: (v) => uniforms.range.value.fromArray(v) },
+    filterRadius: { value: 0, min: 0, max: 0.5, onChange: (v) => (uniforms.filterRadius.value = v) },
+    filterThreshold: { value: 3, min: 0, max: 3, onChange: (v) => (uniforms.filterThreshold.value = v) },
+  })
   return (
     <points frustumCulled={false}>
       <bufferGeometry ref={geometry} />
@@ -194,7 +202,7 @@ export function Particles({ map = null, videoResolution = [], intrMat = null }) 
         blending={THREE.AdditiveBlending}
         depthWrite={false}
         depthTest={false}
-        uniforms-particleSize-value={size}
+        uniforms-particleSize-value={particleSize}
       />
     </points>
   )

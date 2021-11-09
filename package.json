@@ -9,16 +9,15 @@
   "dependencies": {
     "@react-three/drei": "^7.12.6",
     "@react-three/fiber": "^7.0.9",
-    "@types/three": "^0.133.1",
+    "@react-three/xr": "^3.2.0",
     "leva": "^0.9.14",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
-    "react-merge-refs": "^1.1.0",
     "suspend-react": "^0.0.8",
-    "three": "^0.133.1",
-    "three-stdlib": "^2.5.4"
+    "three": "^0.134.0"
   },
   "devDependencies": {
+    "@types/three": "^0.134.0",
     "@vitejs/plugin-react": "^1.0.2",
     "vite": "^2.6.3"
   }

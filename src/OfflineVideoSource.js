@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 
-// https://github.com/marek-simonik/record3d-wifi-streaming-and-rgbd-mp4-3d-video-demo/blob/aad14b61779fb19589c34a5bd0e887416bd51970/js/app/video-sources/OfflineVideoSource.js
+/**
+ * Adapted from Marek Simonk's sample code:
+ * https://github.com/marek-simonik/record3d-wifi-streaming-and-rgbd-mp4-3d-video-demo/blob/aad14b61779fb19589c34a5bd0e887416bd51970/js/app/video-sources/OfflineVideoSource.js
+ */
 
 export class OfflineVideoSource {
   constructor() {

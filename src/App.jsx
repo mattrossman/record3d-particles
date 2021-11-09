@@ -1,64 +1,43 @@
-import { useLayoutEffect, useMemo, useEffect } from 'react'
-import { OrbitControls, Plane, useTexture } from '@react-three/drei'
-import { Canvas, useThree } from '@react-three/fiber'
-import { Particles } from './Particles'
+import { useMemo } from 'react'
+import { Environment, OrbitControls } from '@react-three/drei'
+import { Canvas } from '@react-three/fiber'
 import { Suspense } from 'react'
-import * as THREE from 'three'
-import { OfflineVideoSource } from './OfflineVideoSource'
 import { suspend } from 'suspend-react'
-import { MeshBasicMaterial } from 'three'
+import * as THREE from 'three'
+
+import { Particles } from './Particles'
+import { OfflineVideoSource } from './OfflineVideoSource'
 
 export default function App() {
-  const onDrop = (e) => {
-    e.preventDefault()
-    const mp4File = e.dataTransfer.files[0]
-    console.log(mp4File)
-  }
-  const preventDefault = (e) => e.preventDefault()
   return (
-    <>
-      <Canvas linear flat camera={{ position: [0, 0, 1] }}>
-        <Suspense fallback={null}>
-          <Scene />
-        </Suspense>
-      </Canvas>
-      {/* <div style={{ position: 'absolute', inset: 0, background: 'gray' }} onDrop={onDrop} onDragOver={preventDefault}>
-        Drag n drop
-      </div> */}
-    </>
+    <Canvas linear flat camera={{ position: [0, 0, 1] }}>
+      <Suspense fallback={null}>
+        <OrbitControls />
+        <Record3D src="/sample.mp4" />
+        <Environment preset="night" background />
+      </Suspense>
+    </Canvas>
   )
 }
 
-function Scene() {
+/**
+ * @typedef Record3DProps
+ * @property {string} src
+ *
+ * @param {Record3DProps}
+ */
+function Record3D({ src }) {
   const { video, intrMat, videoResolution } = suspend(async () => {
-    const response = await fetch('/record3d_goat.mp4')
+    const response = await fetch(src)
     const blob = await response.blob()
     const videoSource = new OfflineVideoSource()
     const { video, intrMat, videoResolution } = await videoSource.load(blob)
     return { video, intrMat, videoResolution }
-  }, [])
+  }, [src])
   const videoTexture = useMemo(() => {
     const videoTexture = new THREE.VideoTexture(video)
-    videoTexture.format = THREE.RGBAFormat
+    videoTexture.format = THREE.RGBAFormat // Performance fix for Firefox
     return videoTexture
   }, [video])
-  return (
-    <group>
-      <OrbitControls />
-      <Particles map={videoTexture} videoResolution={videoResolution} intrMat={intrMat} />
-      <Background />
-      {/* <axesHelper /> */}
-      {/* <Plane>
-        <meshBasicMaterial map={videoTexture} />
-      </Plane> */}
-    </group>
-  )
-}
-
-function Background({ color = 'black' }) {
-  const { set } = useThree()
-  useLayoutEffect(() => {
-    set(({ scene }) => void (scene.background = new THREE.Color(color)))
-  }, [color])
-  return null
+  return <Particles map={videoTexture} videoResolution={videoResolution} intrMat={intrMat} />
 }
