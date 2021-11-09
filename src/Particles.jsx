@@ -188,7 +188,7 @@ export function Particles({ map = null, videoResolution = [], intrMat = null }) 
   })
 
   const { particleSize } = useControls({
-    particleSize: { value: 0.02, min: 0.001, max: 0.04 },
+    particleSize: { value: 0.01, min: 0.001, max: 0.04 },
     range: { value: [0.3, 2.8], min: 0, max: 3, onChange: (v) => uniforms.range.value.fromArray(v) },
     filterRadius: { value: 0, min: 0, max: 0.5, onChange: (v) => (uniforms.filterRadius.value = v) },
     filterThreshold: { value: 3, min: 0, max: 3, onChange: (v) => (uniforms.filterThreshold.value = v) },

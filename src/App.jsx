@@ -13,7 +13,7 @@ export default function App() {
     <Canvas linear flat camera={{ position: [0, 0, 1] }}>
       <Suspense fallback={null}>
         <OrbitControls />
-        <Record3D src="/sample.mp4" />
+        <Record3D src="/rgbd.mp4" />
         <Environment preset="night" background />
       </Suspense>
     </Canvas>
